@@ -78,7 +78,7 @@ export const AuthPages: React.FC<AuthPagesProps> = ({
       if (mode === 'register') {
         const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
         await updateProfile(cred.user, { displayName: name.trim() });
-        await sendEmailVerification(cred.user).catch(() => undefined);
+        await sendEmailVerification(cred.user);
         if (!cred.user.emailVerified) {
           setInfoMsg(
             'Account created. Please verify your email address via the link sent to your inbox, or use Google Sign-In for instant verified access.'
