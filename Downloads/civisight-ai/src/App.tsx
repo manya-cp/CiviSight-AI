@@ -25,12 +25,12 @@ import type {
 } from './types/civic';
 
 export default function App() {
-  const [historyStack, setHistoryStack] = useState<PageId[]>(['landing']);
+  const [historyStack, setHistoryStack] = useState<PageId[]>(['citizen-dashboard']);
   const currentPage = historyStack[historyStack.length - 1];
 
-  const [authReady, setAuthReady] = useState(false);
+  const [authReady, setAuthReady] = useState(true);
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [demoMode, setDemoMode] = useState(false);
+  const [demoMode, setDemoMode] = useState(true);
 
   const [liveComplaints, setLiveComplaints] = useState<CivicComplaint[]>([]);
   const [loadingComplaints, setLoadingComplaints] = useState(false);
@@ -42,7 +42,7 @@ export default function App() {
   const [demoVerifications, setDemoVerifications] =
     useState<Record<string, RepairVerification[]>>(DEMO_VERIFICATIONS);
 
-  const [selectedComplaint, setSelectedComplaint] = useState<CivicComplaint | null>(null);
+  const [selectedComplaint, setSelectedComplaint] = useState<CivicComplaint | null>(DEMO_COMPLAINTS[0] || null);
 
   // Active dataset depends strictly on Demo Mode vs Live Authenticated Firestore
   const activeComplaints = demoMode ? demoComplaints : liveComplaints;
