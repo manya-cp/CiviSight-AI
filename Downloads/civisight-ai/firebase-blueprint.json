@@ -1,0 +1,368 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Registered citizen or municipal administrator profile.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Verified user email address",
+          "minLength": 3,
+          "maxLength": 160
+        },
+        "role": {
+          "type": "string",
+          "enum": ["citizen", "admin"],
+          "description": "Access role assigned to user"
+        },
+        "department": {
+          "type": "string",
+          "description": "Optional municipal department for admins",
+          "maxLength": 100
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Account creation server timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Profile update server timestamp"
+        }
+      },
+      "required": ["uid", "name", "email", "role", "createdAt", "updatedAt"]
+    },
+    "AdminGrant": {
+      "title": "AdminGrant",
+      "description": "Explicit administrator privilege grant document.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "minLength": 3,
+          "maxLength": 160
+        },
+        "grantedBy": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "email", "grantedBy", "createdAt"]
+    },
+    "CivicComplaint": {
+      "title": "CivicComplaint",
+      "description": "Citizen-submitted civic infrastructure report with AI analysis and Civic Ripple Intelligence.",
+      "type": "object",
+      "properties": {
+        "complaintId": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "reporterName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Road & Pothole",
+            "Water Leakage",
+            "Garbage & Sanitation",
+            "Open Drainage",
+            "Streetlight Failure",
+            "Flooding & Blocked Drain",
+            "Other Infrastructure"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 2000
+        },
+        "imageUrl": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "location": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 300
+        },
+        "latitude": {
+          "type": "number"
+        },
+        "longitude": {
+          "type": "number"
+        },
+        "nearbyLandmarks": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["Low", "Moderate", "High", "Critical"]
+        },
+        "severityScore": {
+          "type": "number"
+        },
+        "civicRippleScore": {
+          "type": "number"
+        },
+        "impactAnalysis": {
+          "type": "object",
+          "description": "Structured Civic Ripple Intelligence and Gemini Vision analysis."
+        },
+        "recommendations": {
+          "type": "array",
+          "description": "Corrective action recommendations."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "Submitted",
+            "AI Analysed",
+            "Under Review",
+            "In Progress",
+            "Resolved",
+            "Verified"
+          ]
+        },
+        "assignedDepartment": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "resolutionNotes": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "complaintId",
+        "userId",
+        "reporterName",
+        "category",
+        "description",
+        "imageUrl",
+        "location",
+        "nearbyLandmarks",
+        "severity",
+        "severityScore",
+        "civicRippleScore",
+        "impactAnalysis",
+        "recommendations",
+        "status",
+        "assignedDepartment",
+        "resolutionNotes",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "StatusHistoryEntry": {
+      "title": "StatusHistoryEntry",
+      "description": "Audit log entry for complaint lifecycle status transitions.",
+      "type": "object",
+      "properties": {
+        "complaintId": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "complaintUserId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "Submitted",
+            "AI Analysed",
+            "Under Review",
+            "In Progress",
+            "Resolved",
+            "Verified"
+          ]
+        },
+        "remarks": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "updatedBy": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "updatedByUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "complaintId",
+        "complaintUserId",
+        "status",
+        "remarks",
+        "updatedBy",
+        "updatedByUid",
+        "timestamp"
+      ]
+    },
+    "RepairVerification": {
+      "title": "RepairVerification",
+      "description": "FixVerify AI visual before-and-after repair verification record.",
+      "type": "object",
+      "properties": {
+        "verificationId": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "complaintId": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "complaintUserId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "originalImageUrl": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "afterImageUrl": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "result": {
+          "type": "string",
+          "enum": [
+            "Appears Resolved",
+            "Partially Resolved",
+            "Appears Unresolved",
+            "Unable to Determine"
+          ]
+        },
+        "visualDifferences": {
+          "type": "array"
+        },
+        "explanation": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 3000
+        },
+        "confidenceNote": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "verifiedByUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "verificationId",
+        "complaintId",
+        "complaintUserId",
+        "originalImageUrl",
+        "afterImageUrl",
+        "result",
+        "visualDifferences",
+        "explanation",
+        "confidenceNote",
+        "verifiedByUid",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profiles containing PII; strictly restricted to owner and admins."
+    },
+    "/admins/{adminId}": {
+      "schema": { "$ref": "#/entities/AdminGrant" },
+      "description": "Administrator privilege registry managed by existing administrators."
+    },
+    "/complaints/{complaintId}": {
+      "schema": { "$ref": "#/entities/CivicComplaint" },
+      "description": "Civic infrastructure complaint documents with AI impact analysis."
+    },
+    "/statusHistory/{historyId}": {
+      "schema": { "$ref": "#/entities/StatusHistoryEntry" },
+      "description": "Append-only lifecycle audit trail for civic complaints."
+    },
+    "/verifications/{verificationId}": {
+      "schema": { "$ref": "#/entities/RepairVerification" },
+      "description": "FixVerify AI before-and-after repair assessment records."
+    }
+  }
+}

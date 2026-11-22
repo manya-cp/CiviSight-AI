@@ -1,0 +1,322 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Connection validation document for startup check
+    match /test/connection {
+      allow get: if true;
+      allow list, write: if false;
+    }
+
+    // --- Primitive Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedEmail() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isBootstrappedAdmin() {
+      return isVerifiedEmail() && request.auth.token.email == 'manyacp2@gmail.com';
+    }
+
+    function isAdmin() {
+      return isBootstrappedAdmin() || (
+        isVerifiedEmail() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidRole(role) {
+      return role in ['citizen', 'admin'];
+    }
+
+    function isValidCategory(category) {
+      return category in [
+        'Road & Pothole',
+        'Water Leakage',
+        'Garbage & Sanitation',
+        'Open Drainage',
+        'Streetlight Failure',
+        'Flooding & Blocked Drain',
+        'Other Infrastructure'
+      ];
+    }
+
+    function isValidSeverity(severity) {
+      return severity in ['Low', 'Moderate', 'High', 'Critical'];
+    }
+
+    function isValidStatus(status) {
+      return status in [
+        'Submitted',
+        'AI Analysed',
+        'Under Review',
+        'In Progress',
+        'Resolved',
+        'Verified'
+      ];
+    }
+
+    function isValidVerificationResult(result) {
+      return result in [
+        'Appears Resolved',
+        'Partially Resolved',
+        'Appears Unresolved',
+        'Unable to Determine'
+      ];
+    }
+
+    function isValidStringList(arr, maxLen) {
+      return arr is list && arr.size() <= maxLen && (arr.size() == 0 || arr[0] is string);
+    }
+
+    // --- Validation Blueprints ---
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'name', 'email', 'role', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['uid', 'name', 'email', 'role', 'department', 'createdAt', 'updatedAt']) &&
+        isValidId(data.uid) &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 160 &&
+        isValidRole(data.role) &&
+        (!('department' in data) || (data.department is string && data.department.size() <= 100)) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidAdminGrant(data) {
+      return data.keys().hasAll(['uid', 'email', 'grantedBy', 'createdAt']) &&
+        data.keys().hasOnly(['uid', 'email', 'grantedBy', 'createdAt']) &&
+        isValidId(data.uid) &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 160 &&
+        data.grantedBy is string && data.grantedBy.size() >= 1 && data.grantedBy.size() <= 128 &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidImpactAnalysis(impact) {
+      return impact is map &&
+        impact.keys().hasAll([
+          'infrastructureImpact',
+          'publicSafetyImpact',
+          'environmentalImpact',
+          'communityDisruption',
+          'rippleExplanation',
+          'limitedContextWarning'
+        ]) &&
+        impact.infrastructureImpact is number && impact.infrastructureImpact >= 0 && impact.infrastructureImpact <= 100 &&
+        impact.publicSafetyImpact is number && impact.publicSafetyImpact >= 0 && impact.publicSafetyImpact <= 100 &&
+        impact.environmentalImpact is number && impact.environmentalImpact >= 0 && impact.environmentalImpact <= 100 &&
+        impact.communityDisruption is number && impact.communityDisruption >= 0 && impact.communityDisruption <= 100 &&
+        impact.rippleExplanation is string && impact.rippleExplanation.size() >= 1 && impact.rippleExplanation.size() <= 3000 &&
+        impact.limitedContextWarning is bool;
+    }
+
+    function isValidComplaint(data) {
+      return data.keys().hasAll([
+          'complaintId', 'userId', 'reporterName', 'category', 'description',
+          'imageUrl', 'location', 'nearbyLandmarks', 'severity', 'severityScore',
+          'civicRippleScore', 'impactAnalysis', 'recommendations', 'status',
+          'assignedDepartment', 'resolutionNotes', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'complaintId', 'userId', 'reporterName', 'category', 'description',
+          'imageUrl', 'location', 'latitude', 'longitude', 'nearbyLandmarks',
+          'severity', 'severityScore', 'civicRippleScore', 'impactAnalysis',
+          'recommendations', 'status', 'assignedDepartment', 'resolutionNotes',
+          'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.complaintId) && data.complaintId.size() >= 4 && data.complaintId.size() <= 64 &&
+        isValidId(data.userId) &&
+        data.reporterName is string && data.reporterName.size() >= 1 && data.reporterName.size() <= 100 &&
+        isValidCategory(data.category) &&
+        data.description is string && data.description.size() >= 10 && data.description.size() <= 2000 &&
+        data.imageUrl is string && data.imageUrl.size() >= 1 && data.imageUrl.size() <= 2000 &&
+        data.location is string && data.location.size() >= 3 && data.location.size() <= 300 &&
+        (!('latitude' in data) || (data.latitude is number && data.latitude >= -90 && data.latitude <= 90)) &&
+        (!('longitude' in data) || (data.longitude is number && data.longitude >= -180 && data.longitude <= 180)) &&
+        data.nearbyLandmarks is string && data.nearbyLandmarks.size() <= 500 &&
+        isValidSeverity(data.severity) &&
+        data.severityScore is number && data.severityScore >= 0 && data.severityScore <= 100 &&
+        data.civicRippleScore is number && data.civicRippleScore >= 0 && data.civicRippleScore <= 100 &&
+        isValidImpactAnalysis(data.impactAnalysis) &&
+        isValidStringList(data.recommendations, 10) &&
+        isValidStatus(data.status) &&
+        data.assignedDepartment is string && data.assignedDepartment.size() <= 120 &&
+        data.resolutionNotes is string && data.resolutionNotes.size() <= 2000 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidStatusHistory(data) {
+      return data.keys().hasAll([
+          'complaintId', 'complaintUserId', 'status', 'remarks', 'updatedBy', 'updatedByUid', 'timestamp'
+        ]) &&
+        data.keys().hasOnly([
+          'complaintId', 'complaintUserId', 'status', 'remarks', 'updatedBy', 'updatedByUid', 'timestamp'
+        ]) &&
+        isValidId(data.complaintId) && data.complaintId.size() >= 4 && data.complaintId.size() <= 64 &&
+        isValidId(data.complaintUserId) &&
+        isValidStatus(data.status) &&
+        data.remarks is string && data.remarks.size() >= 1 && data.remarks.size() <= 1000 &&
+        data.updatedBy is string && data.updatedBy.size() >= 1 && data.updatedBy.size() <= 100 &&
+        isValidId(data.updatedByUid) &&
+        data.timestamp is timestamp;
+    }
+
+    function isValidVerification(data) {
+      return data.keys().hasAll([
+          'verificationId', 'complaintId', 'complaintUserId', 'originalImageUrl',
+          'afterImageUrl', 'result', 'visualDifferences', 'explanation',
+          'confidenceNote', 'verifiedByUid', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'verificationId', 'complaintId', 'complaintUserId', 'originalImageUrl',
+          'afterImageUrl', 'result', 'visualDifferences', 'explanation',
+          'confidenceNote', 'verifiedByUid', 'createdAt'
+        ]) &&
+        isValidId(data.verificationId) && data.verificationId.size() >= 4 && data.verificationId.size() <= 64 &&
+        isValidId(data.complaintId) && data.complaintId.size() >= 4 && data.complaintId.size() <= 64 &&
+        isValidId(data.complaintUserId) &&
+        data.originalImageUrl is string && data.originalImageUrl.size() >= 1 && data.originalImageUrl.size() <= 2000 &&
+        data.afterImageUrl is string && data.afterImageUrl.size() >= 1 && data.afterImageUrl.size() <= 2000 &&
+        isValidVerificationResult(data.result) &&
+        isValidStringList(data.visualDifferences, 12) &&
+        data.explanation is string && data.explanation.size() >= 1 && data.explanation.size() <= 3000 &&
+        data.confidenceNote is string && data.confidenceNote.size() >= 1 && data.confidenceNote.size() <= 1000 &&
+        isValidId(data.verifiedByUid) &&
+        data.createdAt is timestamp;
+    }
+
+    // --- Collection Rules ---
+
+    // PII Isolation: Users collection strictly limited to owner and admins
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && (request.auth.uid == userId || isAdmin());
+      allow list: if isBootstrappedAdmin();
+      allow create: if isVerifiedEmail() && isValidId(userId) && isValidUser(incoming()) &&
+        request.auth.uid == userId &&
+        incoming().uid == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        (incoming().role == 'citizen' || isBootstrappedAdmin());
+      allow update: if isVerifiedEmail() && isValidId(userId) && isValidUser(incoming()) &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          isAdmin() || (
+            request.auth.uid == userId &&
+            incoming().role == existing().role &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['name', 'department', 'updatedAt'])
+          )
+        );
+      allow delete: if isAdmin() && isValidId(userId);
+    }
+
+    match /admins/{adminId} {
+      allow get: if isSignedIn() && isValidId(adminId) && (request.auth.uid == adminId || isAdmin());
+      allow list: if isBootstrappedAdmin();
+      allow create, update: if isAdmin() && isValidId(adminId) && isValidAdminGrant(incoming()) &&
+        incoming().uid == adminId &&
+        incoming().createdAt == request.time;
+      allow delete: if isAdmin() && isValidId(adminId);
+    }
+
+    match /complaints/{complaintId} {
+      // Specific complaint lookup by ID allowed for signed-in users (tracking), owner, or admin
+      allow get: if isSignedIn() && isValidId(complaintId);
+      // List queries strictly scoped to own reports or bootstrapped admin (no get()/exists() in list)
+      allow list: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || isBootstrappedAdmin()
+      );
+      allow create: if isVerifiedEmail() && isValidId(complaintId) && isValidComplaint(incoming()) &&
+        incoming().complaintId == complaintId &&
+        incoming().userId == request.auth.uid &&
+        incoming().status in ['Submitted', 'AI Analysed'] &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerifiedEmail() && isValidId(complaintId) && isValidComplaint(incoming()) &&
+        incoming().complaintId == existing().complaintId &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          isAdmin() || (
+            // Citizen AI Analysis Action on Submitted complaint
+            existing().userId == request.auth.uid &&
+            existing().status == 'Submitted' &&
+            incoming().status == 'AI Analysed' &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'category', 'description', 'severity', 'severityScore',
+              'civicRippleScore', 'impactAnalysis', 'recommendations',
+              'status', 'updatedAt'
+            ])
+          ) || (
+            // Citizen FixVerify Action on Resolved complaint (cannot mutate once Verified)
+            existing().userId == request.auth.uid &&
+            existing().status != 'Verified' &&
+            existing().status == 'Resolved' &&
+            incoming().status in ['Resolved', 'Verified'] &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+          )
+        );
+      allow delete: if isAdmin() && isValidId(complaintId);
+    }
+
+    match /statusHistory/{historyId} {
+      allow get: if isSignedIn() && isValidId(historyId) && (
+        existing().complaintUserId == request.auth.uid || isAdmin()
+      );
+      allow list: if isSignedIn() && (
+        resource.data.complaintUserId == request.auth.uid || isBootstrappedAdmin()
+      );
+      allow create: if isVerifiedEmail() && isValidId(historyId) && isValidStatusHistory(incoming()) &&
+        incoming().updatedByUid == request.auth.uid &&
+        incoming().timestamp == request.time &&
+        exists(/databases/$(database)/documents/complaints/$(incoming().complaintId)) &&
+        (
+          isAdmin() ||
+          get(/databases/$(database)/documents/complaints/$(incoming().complaintId)).data.userId == request.auth.uid
+        ) &&
+        incoming().complaintUserId == get(/databases/$(database)/documents/complaints/$(incoming().complaintId)).data.userId;
+      allow update, delete: if false;
+    }
+
+    match /verifications/{verificationId} {
+      allow get: if isSignedIn() && isValidId(verificationId) && (
+        existing().complaintUserId == request.auth.uid || isAdmin()
+      );
+      allow list: if isSignedIn() && (
+        resource.data.complaintUserId == request.auth.uid || isBootstrappedAdmin()
+      );
+      allow create: if isVerifiedEmail() && isValidId(verificationId) && isValidVerification(incoming()) &&
+        incoming().verificationId == verificationId &&
+        incoming().verifiedByUid == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        exists(/databases/$(database)/documents/complaints/$(incoming().complaintId)) &&
+        (
+          isAdmin() ||
+          get(/databases/$(database)/documents/complaints/$(incoming().complaintId)).data.userId == request.auth.uid
+        ) &&
+        incoming().complaintUserId == get(/databases/$(database)/documents/complaints/$(incoming().complaintId)).data.userId;
+      allow update, delete: if false;
+    }
+  }
+}
